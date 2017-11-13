@@ -16,10 +16,14 @@ import android.os.Environment;
 import android.os.Handler;
 import android.speech.RecognizerIntent;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -380,7 +384,9 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
                 //Do nothing
             }
         });
-        dialogBuilder.show();
+        AlertDialog alertDialog = dialogBuilder.create();
+        alertDialog.show();
+        AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE, DialogInterface.BUTTON_NEGATIVE}, getAccentColor(), alertDialog);
     }
 
     /**
@@ -408,8 +414,7 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
                 uploadHistory.setStatus("FAIL");
                 realm.commitTransaction();
             }
-        }
-        else {
+        } else {
             Intent result = new Intent();
             result.putExtra(Constants.SHARE_RESULT, code);
             setResult(RESULT_OK, result);
@@ -526,7 +531,9 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
                 new UploadToBox().execute();
             }
         });
-        dialogBuilder.show();
+        AlertDialog alertDialog = dialogBuilder.create();
+        alertDialog.show();
+        AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE, DialogInterface.BUTTON_NEGATIVE}, getAccentColor(), alertDialog);
     }
 
     private void shareToFlickr() {
@@ -627,7 +634,7 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
             discardChangesDialogBuilder.setPositiveButton(getString(R.string.ok).toUpperCase(), new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                    caption = null;
+
                     sendResult(FAIL);
                 }
             });
@@ -638,7 +645,9 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
                         dialog.dismiss();
                 }
             });
-            discardChangesDialogBuilder.create().show();
+            AlertDialog alertDialog = discardChangesDialogBuilder.create();
+            alertDialog.show();
+            AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE, DialogInterface.BUTTON_NEGATIVE}, getAccentColor(), alertDialog);
         }
     }
 
@@ -648,14 +657,11 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
         AlertDialogsHelper.getInsertTextDialog(SharingActivity.this, captionDialogBuilder, captionEditText, R.string.caption_head ,null);
         captionDialogBuilder.setNegativeButton(getString(R.string.cancel).toUpperCase(), null);
         captionEditText.setHint(R.string.description_hint);
-        captionEditText.setHintTextColor(getResources().getColor(R.color.grey, null));
+        captionEditText.setHintTextColor(ContextCompat.getColor(this,R.color.grey));
         captionEditText.setSelectAllOnFocus(true);
+        captionEditText.setHighlightColor(ContextCompat.getColor(getApplicationContext(), R.color.cardview_shadow_start_color));
         captionEditText.selectAll();
         captionEditText.setSingleLine(false);
-        if(caption!=null) {
-            captionEditText.setText(caption);
-            captionEditText.setSelection(caption.length());
-        }
         captionDialogBuilder.setPositiveButton(getString(R.string.add_action).toUpperCase(), new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -663,11 +669,69 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
                 //to avoid dismiss of the dialog on wrong password
             }
         });
-
+        captionDialogBuilder.setNeutralButton(getString(R.string.delete).toUpperCase(), new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //This shoud be overriden later
+            }
+        });
         final AlertDialog passwordDialog = captionDialogBuilder.create();
         passwordDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
         passwordDialog.show();
+        passwordDialog.getButton(DialogInterface.BUTTON_NEUTRAL).setEnabled(false);
+        if(caption!=null) {
+            captionEditText.setText(caption);
+            captionEditText.setSelection(caption.length());
+            passwordDialog.getButton(DialogInterface.BUTTON_NEUTRAL).setEnabled(true);
+        }
 
+        AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE, DialogInterface
+                .BUTTON_NEGATIVE}, getAccentColor(), passwordDialog);
+        passwordDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+        AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE}, getColor(R.color.grey),
+                passwordDialog);
+        captionEditText.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                //empty method body
+
+            }
+
+            @Override public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                //empty method body
+
+            }
+
+            @Override public void afterTextChanged(Editable editable) {
+                if (TextUtils.isEmpty(editable)) {
+                    // Disable ok button and Delete button
+                    passwordDialog.getButton(
+                            AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                    AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE},
+                            getColor(R.color.grey), passwordDialog);
+                } else {
+                    // Something into edit text. Enable the button.
+                    passwordDialog.getButton(
+                            AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                    passwordDialog.getButton(DialogInterface.BUTTON_NEUTRAL).setEnabled(true);
+                    AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE},
+                            getAccentColor(), passwordDialog);
+                }
+
+            }
+        });
+        passwordDialog.getButton(DialogInterface.BUTTON_NEUTRAL).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String captionText = captionEditText.getText().toString();
+                if(!captionText.isEmpty()){
+                    caption = null;
+                    text_caption.setText(caption);
+                    captionEditText.setText(text_caption.toString());
+                    passwordDialog.getButton(DialogInterface.BUTTON_NEUTRAL).setEnabled(false);
+                }
+                passwordDialog.dismiss();
+            }
+        });
         passwordDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -702,7 +766,7 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
 
         final AlertDialog passwordDialog = dialogBuilder.create();
         passwordDialog.show();
-
+        AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE, DialogInterface.BUTTON_NEGATIVE}, getAccentColor(), passwordDialog);
         passwordDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -824,6 +888,7 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
     }
 
     private void shareToWhatsapp() {
+        triedUploading=false;
         Uri uri = Uri.fromFile(new File(saveFilePath));
         Intent share = new Intent(Intent.ACTION_SEND);
         share.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -866,7 +931,9 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
             }
         });
         dialogBuilder.setNegativeButton(getString(R.string.exit).toUpperCase(), null);
-        dialogBuilder.show();
+        AlertDialog alertDialog = dialogBuilder.create();
+        alertDialog.show();
+        AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE, DialogInterface.BUTTON_NEGATIVE, DialogInterface.BUTTON_NEUTRAL}, getAccentColor(), alertDialog);
     }
 
     private void shareToMessenger() {
@@ -924,7 +991,9 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
                             }
                         });
                         dialogBuilder.setNegativeButton(getString(R.string.exit).toUpperCase(), null);
-                        dialogBuilder.show();
+                        AlertDialog alertDialog = dialogBuilder.create();
+                        alertDialog.show();
+                        AlertDialogsHelper.setButtonTextColor(new int[]{DialogInterface.BUTTON_POSITIVE, DialogInterface.BUTTON_NEGATIVE, DialogInterface.BUTTON_NEUTRAL}, getAccentColor(), alertDialog);
                     } else {
                         SnackBarHandler.show(parent, R.string.error_on_imgur);
                         sendResult(FAIL);
@@ -1055,8 +1124,10 @@ public class SharingActivity extends ThemedActivity implements View.OnClickListe
                 return;
         }
         if (requestCode == SHARE_WHATSAPP) {
-            if(responseCode == -1)
+            if(responseCode == RESULT_OK) {
+                triedUploading=true;
                 sendResult(SUCCESS);
+            }
             else
                 sendResult(FAIL);
         }
